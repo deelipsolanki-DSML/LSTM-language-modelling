@@ -6,7 +6,7 @@ from string import punctuation
 punc = set(punctuation)
 punc.discard("\'")
 
-with open("artifacts/vocab.json", 'r') as file:
+with open("app/artifacts/vocab.json", 'r') as file:
     vocab = json.load(file)
 len(vocab)
 
@@ -37,7 +37,7 @@ class LSTMModel(nn.Module):
 model = LSTMModel(vocab_size=len(vocab))
 
 model.load_state_dict(
-    torch.load("artifacts/cornell_lstm_next_word.pth", map_location="cpu", weights_only=True)
+    torch.load("app/artifacts/cornell_lstm_next_word.pth", map_location="cpu", weights_only=True)
 )
 model.eval()
 
@@ -56,20 +56,22 @@ def prediction(text, top_k):
     return tokens
 
   tokenized_text = process(text)
+  if len(tokenized_text) != 0:
 
-  # text -> numerical indices
-  numerical_text = text_to_indices(tokenized_text, vocab)
-  padded_text = torch.tensor(numerical_text, dtype=torch.long).unsqueeze(0).to('cpu')
+    # text -> numerical indices
+    numerical_text = text_to_indices(tokenized_text, vocab)
+    padded_text = torch.tensor(numerical_text, dtype=torch.long).unsqueeze(0).to('cpu')
 
-  with torch.no_grad():
-    # send to model
-    output = model(padded_text[[0], -10:])  # only take the last 10 words (for a balance between context and inference latency)
+    with torch.no_grad():
+      # send to model
+      output = model(padded_text[[0], -10:])  # only take the last 10 words (for a balance between context and inference latency)
 
 
-  output = torch.nn.functional.softmax(output, dim = 1)*100
-  op = torch.argsort(output, dim = 1, descending=True)[0, :top_k]
-  tokens = []
-  for i in op:
-    tokens.append(list(vocab.keys())[i])
+    output = torch.nn.functional.softmax(output, dim = 1)*100
+    op = torch.argsort(output, dim = 1, descending=True)[0, :top_k]
+    tokens = []
+    for i in op:
+      tokens.append(list(vocab.keys())[i])
 
-  return tokens, output[0, op]
+    return tokens, output[0, op]
+  return (None, None)
